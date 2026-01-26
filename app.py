@@ -263,7 +263,7 @@ def generate_semantic_features(embeddings):
 
 
 def make_prediction(image_path, model_types=['lightgbm', 'catboost', 'random_forest']):
-    """Make biomass prediction from image"""
+    """Make biomass prediction from image with extra verification data"""
     try:
         # Extract embeddings
         embeddings = extract_embeddings(image_path)
@@ -271,17 +271,29 @@ def make_prediction(image_path, model_types=['lightgbm', 'catboost', 'random_for
         
         # Generate semantic features
         semantic_features = generate_semantic_features(embeddings)
-        semantic_features = semantic_features.reshape(1, -1)
+        semantic_features_dict = {
+            'bare': float(semantic_features[0]),
+            'sparse': float(semantic_features[1]),
+            'medium': float(semantic_features[2]),
+            'dense': float(semantic_features[3]),
+            'green': float(semantic_features[4]),
+            'dead': float(semantic_features[5]),
+            'clover': float(semantic_features[6]),
+            'grass': float(semantic_features[7]),
+            'ratio_greenness': float(semantic_features[8]),
+            'ratio_clover': float(semantic_features[9]),
+            'ratio_cover': float(semantic_features[10])
+        }
         
         # Transform features
-        X_transformed = FEATURE_ENGINE.transform(embeddings, X_semantic=semantic_features)
+        X_transformed = FEATURE_ENGINE.transform(embeddings, X_semantic=semantic_features.reshape(1, -1))
         
         # Get target scaling factors
         target_names = METADATA['target_names']
         target_max = np.array([METADATA['target_max'][t] for t in target_names])
         
         # Make predictions with each model type
-        all_predictions = []
+        all_model_preds = {}
         
         for model_type in model_types:
             if model_type not in MODELS:
@@ -292,24 +304,36 @@ def make_prediction(image_path, model_types=['lightgbm', 'catboost', 'random_for
             
             for i, target_name in enumerate(target_names):
                 if target_name == 'Dry_Clover_g' and models[target_name] is None:
-                    # Handle case where clover model might be None
                     preds.append(0.0)
                 else:
                     model = models[target_name]
                     pred_raw = model.predict(X_transformed)
                     pred_scaled = pred_raw[0] * target_max[i]
-                    preds.append(max(0.0, pred_scaled))  # Ensure non-negative
+                    preds.append(max(0.0, pred_scaled))
             
-            all_predictions.append(preds)
+            all_model_preds[model_type] = dict(zip(target_names, preds))
         
         # Average predictions across models
-        final_predictions = np.mean(all_predictions, axis=0)
+        final_predictions_raw = np.mean([list(p.values()) for p in all_model_preds.values()], axis=0)
+        final_predictions = dict(zip(target_names, final_predictions_raw))
         
         # Apply post-processing
-        predictions_dict = dict(zip(target_names, final_predictions))
-        predictions_dict = post_process_predictions(predictions_dict)
+        final_predictions = post_process_predictions(final_predictions)
         
-        return predictions_dict
+        # Calculate ensemble stats (STD of Total Dry Matter)
+        total_preds = [p['Dry_Total_g'] for p in all_model_preds.values()]
+        ensemble_stats = {
+            'std_total': float(np.std(total_preds)),
+            'range_total': float(np.max(total_preds) - np.min(total_preds)),
+            'agreement': 'High' if np.std(total_preds) < 1.0 else ('Medium' if np.std(total_preds) < 2.5 else 'Low')
+        }
+        
+        return {
+            'predictions': final_predictions,
+            'semantic_scores': semantic_features_dict,
+            'ensemble_stats': ensemble_stats,
+            'model_details': all_model_preds
+        }
         
     except Exception as e:
         print(f"Prediction error: {e}")
@@ -373,7 +397,7 @@ def predict():
         selected_models = request.form.get('models', 'lightgbm,catboost,random_forest').split(',')
         
         # Make prediction
-        predictions = make_prediction(filepath, model_types=selected_models)
+        result = make_prediction(filepath, model_types=selected_models)
         
         # Convert image to base64
         img_base64 = image_to_base64(filepath)
@@ -381,7 +405,10 @@ def predict():
         # Prepare response
         response = {
             'success': True,
-            'predictions': predictions,
+            'predictions': result['predictions'],
+            'semantic_scores': result['semantic_scores'],
+            'ensemble_stats': result['ensemble_stats'],
+            'model_details': result['model_details'],
             'image': img_base64,
             'timestamp': timestamp,
             'models_used': selected_models
@@ -421,10 +448,12 @@ def batch_predict():
                 file.save(filepath)
                 
                 try:
-                    predictions = make_prediction(filepath, model_types=selected_models)
+                    result = make_prediction(filepath, model_types=selected_models)
                     results.append({
                         'filename': file.filename,
-                        'predictions': predictions,
+                        'predictions': result['predictions'],
+                        'semantic_scores': result['semantic_scores'],
+                        'ensemble_stats': result['ensemble_stats'],
                         'success': True
                     })
                 except Exception as e:

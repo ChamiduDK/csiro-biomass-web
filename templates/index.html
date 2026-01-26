@@ -4,916 +4,139 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CSIRO Biomass Prediction</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            overflow: hidden;
-        }
-
-        header {
-            background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            padding: 30px;
-        }
-
-        .upload-section {
-            background: #f5f5f5;
-            padding: 30px;
-            border-radius: 15px;
-            border: 2px dashed #ccc;
-            transition: all 0.3s;
-        }
-
-        .upload-section:hover {
-            border-color: #4CAF50;
-            background: #f9f9f9;
-        }
-
-        .upload-section h2 {
-            color: #333;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .upload-icon {
-            font-size: 1.5em;
-        }
-
-        .file-input-wrapper {
-            position: relative;
-            overflow: hidden;
-            display: inline-block;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-
-        .file-input-wrapper input[type=file] {
-            position: absolute;
-            left: -9999px;
-        }
-
-        .file-input-label {
-            display: block;
-            padding: 15px 30px;
-            background: #4CAF50;
-            color: white;
-            text-align: center;
-            border-radius: 10px;
-            cursor: pointer;
-            font-size: 1.1em;
-            transition: all 0.3s;
-        }
-
-        .file-input-label:hover {
-            background: #45a049;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(76, 175, 80, 0.3);
-        }
-
-        .model-selection {
-            margin: 20px 0;
-        }
-
-        .model-selection h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 1.1em;
-        }
-
-        .model-checkboxes {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-        }
-
-        .checkbox-wrapper {
-            display: flex;
-            align-items: center;
-            padding: 10px;
-            background: white;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .checkbox-wrapper:hover {
-            background: #e8f5e9;
-        }
-
-        .checkbox-wrapper input {
-            margin-right: 10px;
-            cursor: pointer;
-        }
-
-        .predict-btn {
-            width: 100%;
-            padding: 15px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.2em;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .predict-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .predict-btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .results-section {
-            padding: 30px;
-        }
-
-        .results-section h2 {
-            color: #333;
-            margin-bottom: 20px;
-        }
-
-        .preview-image {
-            width: 100%;
-            max-height: 400px;
-            object-fit: contain;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .predictions {
-            display: grid;
-            gap: 15px;
-        }
-
-        .prediction-card {
-            background: linear-gradient(135deg, #f5f5f5 0%, #e0e0e0 100%);
-            padding: 20px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: all 0.3s;
-        }
-
-        .prediction-card:hover {
-            transform: translateX(5px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-        }
-
-        .prediction-info h3 {
-            color: #333;
-            font-size: 1.2em;
-            margin-bottom: 5px;
-        }
-
-        .prediction-info p {
-            color: #666;
-            font-size: 0.9em;
-        }
-
-        .prediction-value {
-            font-size: 2em;
-            font-weight: bold;
-            padding: 10px 20px;
-            border-radius: 8px;
-            background: white;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 40px;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4CAF50;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .error {
-            background: #ffebee;
-            color: #c62828;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            display: none;
-        }
-
-        .error.active {
-            display: block;
-        }
-
-        .success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 20px 0;
-            display: none;
-        }
-
-        .success.active {
-            display: block;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #e0e0e0;
-        }
-
-        .tab {
-            padding: 15px 30px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1em;
-            color: #666;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s;
-        }
-
-        .tab.active {
-            color: #4CAF50;
-            border-bottom-color: #4CAF50;
-        }
-
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        .batch-upload {
-            margin-top: 20px;
-        }
-
-        .file-list {
-            max-height: 200px;
-            overflow-y: auto;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 15px 0;
-        }
-
-        .file-item {
-            padding: 10px;
-            background: #f5f5f5;
-            margin-bottom: 5px;
-            border-radius: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .export-btn {
-            padding: 10px 20px;
-            background: #2196F3;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 20px;
-        }
-
-        .export-btn:hover {
-            background: #1976D2;
-        }
-
-        .chart-container {
-            margin-top: 30px;
-            padding: 20px;
-            background: #f9f9f9;
-            border-radius: 10px;
-        }
-
-        .insight-section {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 15px;
-            border-left: 6px solid #4CAF50;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-
-        .insight-section h3 {
-            margin-bottom: 15px;
-            color: #2E7D32;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.3em;
-        }
-
-        .semantic-bar-container {
-            margin-bottom: 12px;
-        }
-
-        .semantic-bar-label {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 6px;
-            font-size: 0.95em;
-            color: #444;
-            font-weight: 500;
-        }
-
-        .semantic-bar {
-            height: 12px;
-            background: #e9ecef;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .semantic-bar-fill {
-            height: 100%;
-            background: #4CAF50;
-            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .confidence-badge {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .confidence-high { background: #e8f5e9; color: #2e7d32; border: 1px solid #c8e6c9; }
-        .confidence-medium { background: #fff3e0; color: #ef6c00; border: 1px solid #ffe0b2; }
-        .confidence-low { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
-
-        .model-agreement-box {
-            background: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border: 1px solid #ddd;
-        }
-
-        @media (max-width: 1024px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-
-            .model-checkboxes {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Main Style -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🌿 CSIRO Biomass Prediction</h1>
-            <p>AI-Powered Pasture Biomass Analysis from Images</p>
+
+    <div class="loader-overlay" id="loader">
+        <div class="spinner"></div>
+        <h3>Analysing Biomass...</h3>
+        <p>Running ML Ensembles & SigLIP Extraction</p>
+    </div>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="brand">
+                <i class="fa-solid fa-leaf brand-logo" style="color: var(--primary-color);"></i>
+                <div class="brand-text">
+                    <h1>CSIRO Biomass</h1>
+                    <p>Advanced Pasture Analysis System</p>
+                </div>
+            </div>
+            <div class="status-indicator">
+                <span style="color: var(--primary-color); font-weight: 600;"><i class="fa-solid fa-circle-check"></i> System Ready</span>
+            </div>
         </header>
 
-        <div class="main-content">
-            <!-- Upload Section -->
-            <div class="upload-section">
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('single')">Single Image</button>
-                    <button class="tab" onclick="switchTab('batch')">Batch Upload</button>
+        <!-- Main Grid -->
+        <main class="main-content">
+            
+            <!-- Left Panel: Controls -->
+            <section class="panel control-panel">
+                <div class="panel-title">
+                    <span>Input Data</span>
+                    <i class="fa-solid fa-upload"></i>
                 </div>
 
-                <!-- Single Image Upload -->
-                <div id="single-tab" class="tab-content active">
-                    <h2><span class="upload-icon">📷</span> Upload Pasture Image</h2>
-                    
-                    <div class="file-input-wrapper">
-                        <input type="file" id="imageInput" accept="image/*" onchange="previewImage(event)">
-                        <label for="imageInput" class="file-input-label">
-                            Choose Image
-                        </label>
+                <form id="uploadForm">
+                    <div class="upload-zone" id="dropZone">
+                        <i class="fa-regular fa-image upload-icon"></i>
+                        <input type="file" id="fileInput" name="image" accept="image/*" hidden>
+                        <div class="upload-text">Drop image here</div>
+                        <div class="upload-hint">or click to browse</div>
                     </div>
-
-                    <div class="model-selection">
-                        <h3>Select Models for Ensemble:</h3>
-                        <div class="model-checkboxes">
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" value="lightgbm" checked>
-                                <span>LightGBM</span>
+                
+                    <div class="model-options">
+                        <div class="panel-title" style="font-size: 0.9rem; margin-top: 1rem; margin-bottom: 0.5rem;">
+                            Active Models
+                        </div>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="models" value="lightgbm" checked> LightGBM (Gradient Boosting)
                             </label>
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" value="catboost" checked>
-                                <span>CatBoost</span>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="models" value="catboost" checked> CatBoost (Categorical)
                             </label>
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" value="random_forest" checked>
-                                <span>Random Forest</span>
-                            </label>
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" value="extra_trees">
-                                <span>Extra Trees</span>
-                            </label>
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" value="mlp">
-                                <span>MLP Neural Net</span>
-                            </label>
-                            <label class="checkbox-wrapper">
-                                <input type="checkbox" value="histgbm">
-                                <span>HistGBM</span>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="models" value="random_forest" checked> Random Forest
                             </label>
                         </div>
                     </div>
 
-                    <button class="predict-btn" onclick="makePrediction()" disabled id="predictBtn">
-                        Analyze Biomass
+                    <button type="submit" class="btn-primary" id="analyzeBtn">
+                        <i class="fa-solid fa-microscope"></i> Analyze Sample
                     </button>
+                </form>
+            </section>
+
+            <!-- Right Panel: Dashboard -->
+            <section class="results-area">
+                <div id="welcomeState" class="results-placeholder">
+                    <i class="fa-solid fa-chart-line" style="font-size: 3rem; margin-bottom: 1rem; color: var(--border-color);"></i>
+                    <h2>Analysis Dashboard</h2>
+                    <p>Upload a pasture image to generate biomass metrics and semantic analysis.</p>
                 </div>
 
-                <!-- Batch Upload -->
-                <div id="batch-tab" class="tab-content">
-                    <h2><span class="upload-icon">📁</span> Batch Upload</h2>
-                    
-                    <div class="file-input-wrapper">
-                        <input type="file" id="batchInput" accept="image/*" multiple onchange="handleBatchUpload(event)">
-                        <label for="batchInput" class="file-input-label">
-                            Choose Multiple Images
-                        </label>
+                <div id="resultsDashboard" class="results-dashboard">
+                    <!-- Metrics Row -->
+                    <div class="metrics-grid">
+                        <div class="metric-card total">
+                            <span class="metric-label">Total Dry Matter</span>
+                            <span class="metric-value" id="valTotal">0</span><span class="metric-unit">g</span>
+                        </div>
+                        <div class="metric-card greenery">
+                            <span class="metric-label">Green Matter</span>
+                            <span class="metric-value" id="valGreen">0</span><span class="metric-unit">g</span>
+                        </div>
+                        <div class="metric-card clover">
+                            <span class="metric-label">Clover Content</span>
+                            <span class="metric-value" id="valClover">0</span><span class="metric-unit">g</span>
+                        </div>
+                        <div class="metric-card dead">
+                            <span class="metric-label">Dead Material</span>
+                            <span class="metric-value" id="valDead">0</span><span class="metric-unit">g</span>
+                        </div>
                     </div>
 
-                    <div class="file-list" id="fileList"></div>
+                    <!-- Visualization Row -->
+                    <div class="viz-grid">
+                        <!-- Input Image -->
+                        <div class="panel">
+                             <div class="panel-title">Sample Image</div>
+                             <img id="resultImage" src="" alt="Analyzed Sample" class="input-preview">
+                        </div>
 
-                    <button class="predict-btn" onclick="makeBatchPrediction()" disabled id="batchPredictBtn">
-                        Analyze All Images
-                    </button>
+                        <!-- Radar Chart -->
+                        <div class="panel">
+                             <div class="panel-title">Semantic Composition</div>
+                             <div class="chart-container">
+                                 <canvas id="semanticChart"></canvas>
+                             </div>
+                        </div>
+                    </div>
                 </div>
+            </section>
+        </main>
 
-                <div class="loading" id="loading">
-                    <div class="spinner"></div>
-                    <p>Analyzing image...</p>
-                </div>
-
-                <div class="error" id="error"></div>
-                <div class="success" id="success"></div>
-            </div>
-
-            <!-- Results Section -->
-            <div class="results-section">
-                <h2>📊 Prediction Results</h2>
-                
-                <div id="imagePreview" style="display: none;">
-                    <img id="previewImg" class="preview-image" alt="Preview">
-                </div>
-
-                <div id="predictions" class="predictions"></div>
-
-                <button class="export-btn" onclick="exportResults()" style="display: none;" id="exportBtn">
-                    📥 Export to CSV
-                </button>
-
-                <div class="chart-container" id="chartContainer" style="display: none;">
-                    <canvas id="resultsChart"></canvas>
-                </div>
-            </div>
-        </div>
+        <footer class="app-footer">
+            <p>&copy; 2024 CSIRO Data61 & Agriculture and Food. Powered by SigLIP & LightGBM Ensembles.</p>
+        </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        let currentResults = null;
-        let batchResults = [];
-
-        function switchTab(tab) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
-            if (tab === 'single') {
-                document.querySelector('.tab:nth-child(1)').classList.add('active');
-                document.getElementById('single-tab').classList.add('active');
-            } else {
-                document.querySelector('.tab:nth-child(2)').classList.add('active');
-                document.getElementById('batch-tab').classList.add('active');
-            }
-        }
-
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    document.getElementById('previewImg').src = e.target.result;
-                    document.getElementById('imagePreview').style.display = 'block';
-                    document.getElementById('predictBtn').disabled = false;
-                }
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function handleBatchUpload(event) {
-            const files = event.target.files;
-            const fileList = document.getElementById('fileList');
-            fileList.innerHTML = '';
-            
-            if (files.length > 0) {
-                for (let i = 0; i < files.length; i++) {
-                    const fileItem = document.createElement('div');
-                    fileItem.className = 'file-item';
-                    fileItem.innerHTML = `
-                        <span>${files[i].name}</span>
-                        <span>${(files[i].size / 1024).toFixed(2)} KB</span>
-                    `;
-                    fileList.appendChild(fileItem);
-                }
-                document.getElementById('batchPredictBtn').disabled = false;
-            }
-        }
-
-        function getSelectedModels() {
-            const checkboxes = document.querySelectorAll('.model-checkboxes input[type="checkbox"]:checked');
-            return Array.from(checkboxes).map(cb => cb.value);
-        }
-
-        async function makePrediction() {
-            const fileInput = document.getElementById('imageInput');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                showError('Please select an image');
-                return;
-            }
-
-            const formData = new FormData();
-            formData.append('image', file);
-            formData.append('models', getSelectedModels().join(','));
-
-            showLoading(true);
-            hideError();
-            hideSuccess();
-
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    displayResults(data);
-                    showSuccess('Prediction completed successfully!');
-                    document.getElementById('exportBtn').style.display = 'block';
-                } else {
-                    showError(data.error || 'Prediction failed');
-                }
-            } catch (error) {
-                showError('Error: ' + error.message);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        async function makeBatchPrediction() {
-            const fileInput = document.getElementById('batchInput');
-            const files = fileInput.files;
-            
-            if (files.length === 0) {
-                showError('Please select images');
-                return;
-            }
-
-            const formData = new FormData();
-            for (let i = 0; i < files.length; i++) {
-                formData.append('images', files[i]);
-            }
-            formData.append('models', getSelectedModels().join(','));
-
-            showLoading(true);
-            hideError();
-            hideSuccess();
-
-            try {
-                const response = await fetch('/batch-predict', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    batchResults = data.results;
-                    displayBatchResults(data.results);
-                    showSuccess(`Processed ${data.total} images successfully!`);
-                    document.getElementById('exportBtn').style.display = 'block';
-                } else {
-                    showError(data.error || 'Batch prediction failed');
-                }
-            } catch (error) {
-                showError('Error: ' + error.message);
-            } finally {
-                showLoading(false);
-            }
-        }
-
-        function displayResults(data) {
-            currentResults = data;
-            
-            // Display image
-            document.getElementById('previewImg').src = 'data:image/jpeg;base64,' + data.image;
-            document.getElementById('imagePreview').style.display = 'block';
-
-            // Display predictions
-            const predictionsDiv = document.getElementById('predictions');
-            predictionsDiv.innerHTML = '';
-
-            // 1. Model Agreement Section
-            const agreement = data.ensemble_stats.agreement;
-            const badgeClass = `confidence-${agreement.toLowerCase()}`;
-            
-            const agreementBox = document.createElement('div');
-            agreementBox.className = 'model-agreement-box';
-            agreementBox.innerHTML = `
-                <div>
-                    <strong style="color: #555;">Ensemble Confidence</strong>
-                    <div style="font-size: 0.8em; color: #888;">Variation across ${data.models_used.length} models</div>
-                </div>
-                <span class="confidence-badge ${badgeClass}">${agreement} Agreement</span>
-            `;
-            predictionsDiv.appendChild(agreementBox);
-
-            // 2. Main Prediction Cards
-            const targetInfo = {{ target_info | tojson }};
-            
-            for (const [key, value] of Object.entries(data.predictions)) {
-                const info = targetInfo[key];
-                const card = document.createElement('div');
-                card.className = 'prediction-card';
-                card.style.borderLeft = `5px solid ${info.color}`;
-                
-                card.innerHTML = `
-                    <div class="prediction-info">
-                        <h3>${info.name}</h3>
-                        <p>${info.description}</p>
-                    </div>
-                    <div class="prediction-value" style="color: ${info.color}">
-                        ${value.toFixed(2)} ${info.unit}
-                    </div>
-                `;
-                
-                predictionsDiv.appendChild(card);
-            }
-
-            // 3. Visual Interpretation Section
-            const insightsDiv = document.createElement('div');
-            insightsDiv.className = 'insight-section';
-            
-            insightsDiv.innerHTML = `
-                <h3>🧠 AI Visual Interpretation</h3>
-                <p style="margin-bottom: 15px; font-size: 0.9em; color: #666;">
-                    The model identified the following visual features which determined the biomass levels:
-                </p>
-                <div>
-                    ${createSemanticBar('☘️ Clover Density', data.semantic_scores.ratio_clover * 100, '#9C27B0')}
-                    ${createSemanticBar('🌿 Greenness / Vitality', data.semantic_scores.ratio_greenness * 100, '#4CAF50')}
-                    ${createSemanticBar('📉 Bare Soil / Sparse', (data.semantic_scores.bare + data.semantic_scores.sparse) * 50, '#795548')}
-                    ${createSemanticBar('📈 Dense Vegetation', (data.semantic_scores.dense + data.semantic_scores.medium) * 50, '#2E7D32')}
-                </div>
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ddd; font-style: italic; font-size: 0.85em; color: #777;">
-                    💡 Verification Tip: Compare these scores with what you see in the image. High greenness and high density should correlate with high biomass.
-                </div>
-            `;
-            predictionsDiv.appendChild(insightsDiv);
-
-            // Display chart
-            displayChart(data.predictions);
-        }
-
-        function createSemanticBar(label, value, color) {
-            const clampedValue = Math.min(100, Math.max(0, value));
-            return `
-                <div class="semantic-bar-container">
-                    <div class="semantic-bar-label">
-                        <span>${label}</span>
-                        <span>${clampedValue.toFixed(1)}%</span>
-                    </div>
-                    <div class="semantic-bar">
-                        <div class="semantic-bar-fill" style="width: ${clampedValue}%; background-color: ${color}"></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        function displayBatchResults(results) {
-            const predictionsDiv = document.getElementById('predictions');
-            predictionsDiv.innerHTML = '<h3>Batch Results</h3>';
-
-            results.forEach((result, index) => {
-                const resultCard = document.createElement('div');
-                resultCard.style.marginBottom = '20px';
-                resultCard.style.padding = '15px';
-                resultCard.style.background = '#f9f9f9';
-                resultCard.style.borderRadius = '10px';
-                
-                if (result.success) {
-                    resultCard.innerHTML = `
-                        <h4>${result.filename}</h4>
-                        <p>Total Biomass: ${result.predictions.Dry_Total_g.toFixed(2)}g</p>
-                        <p>Green: ${result.predictions.Dry_Green_g.toFixed(2)}g | 
-                           Dead: ${result.predictions.Dry_Dead_g.toFixed(2)}g | 
-                           Clover: ${result.predictions.Dry_Clover_g.toFixed(2)}g</p>
-                    `;
-                } else {
-                    resultCard.innerHTML = `
-                        <h4>${result.filename}</h4>
-                        <p style="color: red;">Error: ${result.error}</p>
-                    `;
-                }
-                
-                predictionsDiv.appendChild(resultCard);
-            });
-        }
-
-        function displayChart(predictions) {
-            const ctx = document.getElementById('resultsChart');
-            document.getElementById('chartContainer').style.display = 'block';
-
-            if (window.bioChart) {
-                window.bioChart.destroy();
-            }
-
-            const targetInfo = {{ target_info | tojson }};
-            const labels = Object.keys(predictions).map(key => targetInfo[key].name);
-            const data = Object.values(predictions);
-            const colors = Object.keys(predictions).map(key => targetInfo[key].color);
-
-            window.bioChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Biomass (grams)',
-                        data: data,
-                        backgroundColor: colors,
-                        borderColor: colors,
-                        borderWidth: 2
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: {
-                                display: true,
-                                text: 'Weight (grams)'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: false
-                        },
-                        title: {
-                            display: true,
-                            text: 'Biomass Composition',
-                            font: {
-                                size: 18
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        async function exportResults() {
-            let dataToExport = [];
-            
-            if (batchResults.length > 0) {
-                dataToExport = batchResults.filter(r => r.success).map(r => ({
-                    filename: r.filename,
-                    ...r.predictions
-                }));
-            } else if (currentResults) {
-                dataToExport = [{
-                    timestamp: currentResults.timestamp,
-                    ...currentResults.predictions
-                }];
-            }
-
-            try {
-                const response = await fetch('/export-results', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ predictions: dataToExport })
-                });
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    window.location.href = data.download_url;
-                    showSuccess('Results exported successfully!');
-                } else {
-                    showError('Failed to export results');
-                }
-            } catch (error) {
-                showError('Error exporting results: ' + error.message);
-            }
-        }
-
-        function showLoading(show) {
-            const loading = document.getElementById('loading');
-            if (show) {
-                loading.classList.add('active');
-            } else {
-                loading.classList.remove('active');
-            }
-        }
-
-        function showError(message) {
-            const error = document.getElementById('error');
-            error.textContent = message;
-            error.classList.add('active');
-        }
-
-        function hideError() {
-            document.getElementById('error').classList.remove('active');
-        }
-
-        function showSuccess(message) {
-            const success = document.getElementById('success');
-            success.textContent = message;
-            success.classList.add('active');
-            
-            setTimeout(() => {
-                success.classList.remove('active');
-            }, 5000);
-        }
-
-        function hideSuccess() {
-            document.getElementById('success').classList.remove('active');
-        }
-    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

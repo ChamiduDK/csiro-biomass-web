@@ -71,9 +71,28 @@ TARGET_INFO = {
 }
 
 
+from feature_engine import SupervisedEmbeddingEngine
+
+
 def allowed_file(filename):
     """Check if file extension is allowed"""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
+
+def split_image(image, patch_size=520, overlap=16):
+    """Split image into overlapping patches matching training logic"""
+    h, w, c = image.shape
+    stride = patch_size - overlap
+    patches = []
+    for y in range(0, h, stride):
+        for x in range(0, w, stride):
+            y2 = min(y + patch_size, h)
+            x2 = min(x + patch_size, w)
+            y1 = max(0, y2 - patch_size)
+            x1 = max(0, x2 - patch_size)
+            patch = image[y1:y2, x1:x2, :]
+            patches.append(patch)
+    return patches
 
 
 def load_models():
@@ -83,6 +102,11 @@ def load_models():
     print("Loading models...")
     
     try:
+        # Load metadata first to know which SigLIP to load
+        with open('models/model_metadata.pkl', 'rb') as f:
+            METADATA = pickle.load(f)
+        print(f"✓ Loaded metadata (Dimension: {METADATA['embedding_dim']})")
+
         # Load ensemble models
         with open('models/ensemble_models.pkl', 'rb') as f:
             MODELS = pickle.load(f)
@@ -93,23 +117,28 @@ def load_models():
             FEATURE_ENGINE = pickle.load(f)
         print("✓ Loaded feature engine")
         
-        # Load metadata
-        with open('models/model_metadata.pkl', 'rb') as f:
-            METADATA = pickle.load(f)
-        print("✓ Loaded metadata")
-        
         # Load SigLIP model for embeddings
         from transformers import AutoModel, AutoImageProcessor
-        siglip_path = 'models/siglip-so400m-patch14-384'
         
-        if os.path.exists(siglip_path):
-            SIGLIP_MODEL = AutoModel.from_pretrained(siglip_path, local_files_only=True).eval().to(DEVICE)
-            SIGLIP_PROCESSOR = AutoImageProcessor.from_pretrained(siglip_path)
-            print("✓ Loaded SigLIP model")
+        # Determine which model to load based on metadata
+        if METADATA['embedding_dim'] == 1152:
+            model_path = 'models/siglip-so400m-patch14-384'
+            hub_path = 'google/siglip-so400m-patch14-384'
         else:
-            print("⚠ SigLIP model not found - using random embeddings for demo")
-            SIGLIP_MODEL = None
-            SIGLIP_PROCESSOR = None
+            # Fallback to base model which matches 768-dim embeddings
+            model_path = 'models/siglip-base-patch16-224'
+            hub_path = 'google/siglip-base-patch16-224'
+
+        if os.path.exists(model_path):
+            print(f"Loading Local SigLIP from {model_path}...")
+            SIGLIP_MODEL = AutoModel.from_pretrained(model_path, local_files_only=True).eval().to(DEVICE)
+            SIGLIP_PROCESSOR = AutoImageProcessor.from_pretrained(model_path)
+            print("✓ Loaded SigLIP model (Local)")
+        else:
+            print(f"⚠ Local SigLIP not found at {model_path}, downloading {hub_path} from Hub...")
+            SIGLIP_MODEL = AutoModel.from_pretrained(hub_path).eval().to(DEVICE)
+            SIGLIP_PROCESSOR = AutoImageProcessor.from_pretrained(hub_path)
+            print("✓ Loaded SigLIP model (Hub)")
         
         return True
         
@@ -119,41 +148,118 @@ def load_models():
 
 
 def extract_embeddings(image_path):
-    """Extract SigLIP embeddings from image"""
+    """Extract SigLIP embeddings using the same patch-based method as training"""
     if SIGLIP_MODEL is None or SIGLIP_PROCESSOR is None:
-        # Return random embeddings for demo if model not loaded
-        print("⚠ Using random embeddings (demo mode)")
-        return np.random.randn(1152).astype(np.float32)
+        print("⚠ ERROR: SigLIP model not loaded. Returning zeros.")
+        return np.zeros(METADATA.get('embedding_dim', 768)).astype(np.float32)
     
     try:
-        # Read and preprocess image
+        # Read image
         img = cv2.imread(str(image_path))
         if img is None:
-            raise ValueError("Failed to read image")
+            raise ValueError(f"Failed to read image: {image_path}")
         
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(img_rgb)
         
-        # Process with SigLIP
-        inputs = SIGLIP_PROCESSOR(images=pil_img, return_tensors="pt")
+        # Split into patches (matching training logic)
+        patches = split_image(img_rgb, patch_size=520, overlap=16)
+        pil_images = [Image.fromarray(p) for p in patches]
+        
+        # Process patches with SigLIP
+        inputs = SIGLIP_PROCESSOR(images=pil_images, return_tensors="pt")
         inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
         
         with torch.no_grad():
-            outputs = SIGLIP_MODEL(**inputs)
-            embeddings = outputs.last_hidden_state.mean(dim=1).cpu().numpy()
+            outputs = SIGLIP_MODEL.get_image_features(**inputs)
+            
+            # Extract features (handling different model output formats)
+            if isinstance(outputs, torch.Tensor):
+                features = outputs
+            elif hasattr(outputs, 'pooler_output') and outputs.pooler_output is not None:
+                features = outputs.pooler_output
+            elif hasattr(outputs, 'last_hidden_state'):
+                features = outputs.last_hidden_state.mean(dim=1)
+            else:
+                features = outputs[0]
+                
+            # Average embeddings across all patches
+            embeddings = features.mean(dim=0).cpu().numpy()
         
         return embeddings.flatten()
         
     except Exception as e:
         print(f"Error extracting embeddings: {e}")
-        return np.random.randn(1152).astype(np.float32)
+        return np.zeros(METADATA.get('embedding_dim', 768)).astype(np.float32)
 
 
 def generate_semantic_features(embeddings):
-    """Generate semantic features from embeddings"""
-    # Simplified version - in production, use the full semantic feature generation
-    # For now, return zeros as placeholder
-    return np.zeros(80).astype(np.float32)  # Adjust size based on your model
+    """Generate semantic features from embeddings matching training logic exactly"""
+    if SIGLIP_MODEL is None:
+        return np.zeros(11).astype(np.float32)
+
+    try:
+        from transformers import AutoTokenizer
+        # Use the same model path as in load_models or fallback
+        # Ideally would be loaded once, but for simplicity we load tokenizer here or globally
+        tokenizer_path = 'models/siglip-so400m-patch14-384' if METADATA.get('embedding_dim') == 1152 else 'google/siglip-base-patch16-224'
+        
+        try:
+            if os.path.exists(tokenizer_path):
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, local_files_only=True)
+            else:
+                tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+        except:
+             return np.zeros(11).astype(np.float32)
+
+        # Concept definitions (Must match train_pipeline.py exactly)
+        concept_groups = {
+            "bare": ["bare soil", "dirt ground", "sparse vegetation", "exposed earth"],
+            "sparse": ["low density pasture", "thin grass", "short clipped grass"],
+            "medium": ["average pasture cover", "medium height grass", "grazed pasture"],
+            "dense": ["dense tall pasture", "thick grassy volume", "high biomass", "overgrown vegetation"],
+            "green": ["lush green vibrant pasture", "photosynthesizing leaves", "fresh growth"],
+            "dead": ["dry brown dead grass", "yellow straw", "senesced material", "standing hay"],
+            "clover": ["white clover", "trifolium repens", "broadleaf legume", "clover flowers"],
+            "grass": ["ryegrass", "blade-like leaves", "fescue", "grassy sward"]
+        }
+        
+        concept_vectors = {}
+        with torch.no_grad():
+            for name, prompts in concept_groups.items():
+                inputs = tokenizer(prompts, padding="max_length", return_tensors="pt")
+                inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
+                emb = SIGLIP_MODEL.get_text_features(**inputs)
+                emb = emb / emb.norm(p=2, dim=-1, keepdim=True)
+                concept_vectors[name] = emb.mean(dim=0, keepdim=True)
+        
+        # Calculate scores
+        if len(embeddings.shape) == 1:
+            img_tensor = torch.tensor(embeddings, dtype=torch.float32).unsqueeze(0).to(DEVICE)
+        else:
+            img_tensor = torch.tensor(embeddings, dtype=torch.float32).to(DEVICE)
+            
+        img_tensor = img_tensor / img_tensor.norm(p=2, dim=-1, keepdim=True)
+        
+        scores = {}
+        for name, vec in concept_vectors.items():
+            scores[name] = torch.matmul(img_tensor, vec.T).cpu().numpy().flatten()
+            
+        # Create a DataFrame-like structure for easy ratio calculation
+        # This ensures we follow the exact same logic as training
+        eps = 1e-6
+        ratio_greenness = scores['green'] / (scores['green'] + scores['dead'] + eps)
+        ratio_clover = scores['clover'] / (scores['clover'] + scores['grass'] + eps)
+        ratio_cover = (scores['dense'] + scores['medium']) / (scores['bare'] + scores['sparse'] + eps)
+        
+        # Order: 8 concept scores + 3 ratios = 11 features
+        feature_vector = [scores[name][0] for name in concept_groups.keys()]
+        feature_vector.extend([ratio_greenness[0], ratio_clover[0], ratio_cover[0]])
+        
+        return np.array(feature_vector).astype(np.float32)
+        
+    except Exception as e:
+        print(f"Error generating semantic features: {e}")
+        return np.zeros(11).astype(np.float32)
 
 
 def make_prediction(image_path, model_types=['lightgbm', 'catboost', 'random_forest']):

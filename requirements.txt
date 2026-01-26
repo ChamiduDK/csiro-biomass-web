@@ -10,7 +10,7 @@ lightgbm>=4.1.0
 xgboost>=2.0.0
 
 # CatBoost (optional - may fail on some systems)
-# catboost>=1.2
+catboost>=1.2
 
 # Deep Learning (CPU version for compatibility)
 torch>=2.1.0

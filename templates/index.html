@@ -8,7 +8,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -18,6 +18,7 @@
     
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 </head>
 <body>
 
@@ -38,7 +39,7 @@
                 </div>
             </div>
             <div class="status-indicator">
-                <span style="color: var(--primary-color); font-weight: 600;"><i class="fa-solid fa-circle-check"></i> System Ready</span>
+                <span class="status-badge"><i class="fa-solid fa-server"></i> System Ready</span>
             </div>
         </header>
 
@@ -48,31 +49,33 @@
             <!-- Left Panel: Controls -->
             <section class="panel control-panel">
                 <div class="panel-title">
-                    <span>Input Data</span>
-                    <i class="fa-solid fa-upload"></i>
+                    <span><i class="fa-solid fa-upload"></i> Input Data</span>
                 </div>
 
                 <form id="uploadForm">
                     <div class="upload-zone" id="dropZone">
                         <i class="fa-regular fa-image upload-icon"></i>
                         <input type="file" id="fileInput" name="image" accept="image/*" hidden>
-                        <div class="upload-text">Drop image here</div>
-                        <div class="upload-hint">or click to browse</div>
+                        <div class="upload-text">Drag & Drop Image</div>
+                        <div class="upload-hint">Supported formats: PNG, JPG, JPEG</div>
                     </div>
                 
                     <div class="model-options">
-                        <div class="panel-title" style="font-size: 0.9rem; margin-top: 1rem; margin-bottom: 0.5rem;">
-                            Active Models
+                        <div class="panel-subtitle">
+                           Model Configuration
                         </div>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
-                                <input type="checkbox" name="models" value="lightgbm" checked> LightGBM (Gradient Boosting)
+                                <input type="checkbox" name="models" value="lightgbm" checked> 
+                                <span>LightGBM (Gradient Boosting)</span>
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="models" value="catboost" checked> CatBoost (Categorical)
+                                <input type="checkbox" name="models" value="catboost" checked> 
+                                <span>CatBoost (Categorical)</span>
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="models" value="random_forest" checked> Random Forest
+                                <input type="checkbox" name="models" value="random_forest" checked> 
+                                <span>Random Forest</span>
                             </label>
                         </div>
                     </div>
@@ -81,59 +84,150 @@
                         <i class="fa-solid fa-microscope"></i> Analyze Sample
                     </button>
                 </form>
+
+                <!-- Sample Image Preview in Control Panel after upload -->
+                 <div id="miniPreview" style="display:none; margin-top: 1rem;">
+                    <div class="panel-subtitle">Current Sample</div>
+                    <img id="resultImageMini" src="" alt="Thumbnail" style="width:100%; border-radius: 4px;">
+                 </div>
             </section>
 
             <!-- Right Panel: Dashboard -->
             <section class="results-area">
                 <div id="welcomeState" class="results-placeholder">
-                    <i class="fa-solid fa-chart-line" style="font-size: 3rem; margin-bottom: 1rem; color: var(--border-color);"></i>
-                    <h2>Analysis Dashboard</h2>
-                    <p>Upload a pasture image to generate biomass metrics and semantic analysis.</p>
+                    <div class="placeholder-content">
+                        <i class="fa-solid fa-chart-line placeholder-icon"></i>
+                        <h2>Analysis Dashboard</h2>
+                        <p>Upload a pasture image to generate comprehensive biomass metrics.</p>
+                    </div>
                 </div>
 
                 <div id="resultsDashboard" class="results-dashboard">
-                    <!-- Metrics Row -->
+                    
+                    <!-- 1. Metrics Grid (5 Cards) -->
+                    <h3 class="section-heading">Biomass Composition</h3>
                     <div class="metrics-grid">
-                        <div class="metric-card total">
-                            <span class="metric-label">Total Dry Matter</span>
-                            <span class="metric-value" id="valTotal">0</span><span class="metric-unit">g</span>
+                        
+                        <!-- Total -->
+                        <div class="metric-card total highlight">
+                            <i class="fa-solid fa-scale-balanced metric-icon"></i>
+                            <div class="metric-info">
+                                <span class="metric-label">Total Dry Biomass</span>
+                                <span class="metric-desc">Total weight of all dried biomass.</span>
+                            </div>
+                            <div class="metric-data">
+                                <span class="metric-value" id="valTotal">0</span>
+                                <span class="metric-unit">g</span>
+                            </div>
                         </div>
-                        <div class="metric-card greenery">
-                            <span class="metric-label">Green Matter</span>
-                            <span class="metric-value" id="valGreen">0</span><span class="metric-unit">g</span>
+
+                        <!-- GDM -->
+                        <div class="metric-card gdm">
+                             <div class="metric-dot" style="background: #8BC34A;"></div>
+                            <div class="metric-info">
+                                <span class="metric-label">Green Dry Matter (GDM)</span>
+                                <span class="metric-desc">Combined green & clover biomass.</span>
+                            </div>
+                            <div class="metric-data">
+                                <span class="metric-value" id="valGDM">0</span>
+                                <span class="metric-unit">g</span>
+                            </div>
                         </div>
+
+                         <!-- Dry Green -->
+                         <div class="metric-card green">
+                            <div class="metric-dot" style="background: #4CAF50;"></div>
+                           <div class="metric-info">
+                               <span class="metric-label">Dry Green Veg</span>
+                               <span class="metric-desc">Excluding clover.</span>
+                           </div>
+                           <div class="metric-data">
+                               <span class="metric-value" id="valGreen">0</span>
+                               <span class="metric-unit">g</span>
+                           </div>
+                       </div>
+
+                        <!-- Dry Clover -->
                         <div class="metric-card clover">
-                            <span class="metric-label">Clover Content</span>
-                            <span class="metric-value" id="valClover">0</span><span class="metric-unit">g</span>
+                            <div class="metric-dot" style="background: #9C27B0;"></div>
+                            <div class="metric-info">
+                                <span class="metric-label">Dry Clover</span>
+                                <span class="metric-desc">Legume content.</span>
+                            </div>
+                            <div class="metric-data">
+                                <span class="metric-value" id="valClover">0</span>
+                                <span class="metric-unit">g</span>
+                            </div>
                         </div>
+
+                        <!-- Dry Dead -->
                         <div class="metric-card dead">
-                            <span class="metric-label">Dead Material</span>
-                            <span class="metric-value" id="valDead">0</span><span class="metric-unit">g</span>
+                            <div class="metric-dot" style="background: #795548;"></div>
+                            <div class="metric-info">
+                                <span class="metric-label">Dry Dead Material</span>
+                                <span class="metric-desc">Senesced/dry matter.</span>
+                            </div>
+                            <div class="metric-data">
+                                <span class="metric-value" id="valDead">0</span>
+                                <span class="metric-unit">g</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Visualization Row -->
+                    <!-- 2. Charts Row -->
+                    <h3 class="section-heading">Visual Analysis</h3>
                     <div class="viz-grid">
-                        <!-- Input Image -->
-                        <div class="panel">
-                             <div class="panel-title">Sample Image</div>
-                             <img id="resultImage" src="" alt="Analyzed Sample" class="input-preview">
-                        </div>
-
-                        <!-- Radar Chart -->
-                        <div class="panel">
-                             <div class="panel-title">Semantic Composition</div>
+                        
+                        <!-- Pie Chart -->
+                        <div class="chart-card">
+                             <div class="chart-header">
+                                <span>Composition Ratio</span>
+                                <i class="fa-solid fa-chart-pie"></i>
+                             </div>
                              <div class="chart-container">
-                                 <canvas id="semanticChart"></canvas>
+                                 <canvas id="compositionPieChart"></canvas>
                              </div>
                         </div>
+
+                        <!-- Histogram -->
+                         <div class="chart-card">
+                            <div class="chart-header">
+                               <span>Weight Distribution</span>
+                               <i class="fa-solid fa-chart-bar"></i>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="biomassHistogram"></canvas>
+                            </div>
+                       </div>
+                       
+                         <!-- Radar Chart (Keeping for advanced detail) -->
+                         <div class="chart-card">
+                            <div class="chart-header">
+                               <span>Semantic Features</span>
+                               <i class="fa-solid fa-bullseye"></i>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="semanticChart"></canvas>
+                            </div>
+                       </div>
+
                     </div>
+
+                    <!-- Large Image View -->
+                    <h3 class="section-heading">Analyzed Sample</h3>
+                    <div class="image-viewer">
+                        <img id="resultImageMain" src="" alt="Analyzed Sample">
+                        <div class="image-overlay">
+                            <span><i class="fa-solid fa-check"></i> Processed with SigLIP Attention</span>
+                        </div>
+                    </div>
+
                 </div>
             </section>
         </main>
 
         <footer class="app-footer">
-            <p>&copy; 2024 CSIRO Data61 & Agriculture and Food. Powered by SigLIP & LightGBM Ensembles.</p>
+            <p>&copy; 2026 CSIRO Data61 & Agriculture and Food. Powered by SigLIP & LightGBM Ensembles.</p>
         </footer>
     </div>
 

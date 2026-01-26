@@ -6,11 +6,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const welcomeState = document.getElementById('welcomeState');
     const resultsDashboard = document.getElementById('resultsDashboard');
     const analyzeBtn = document.getElementById('analyzeBtn');
+    const miniPreview = document.getElementById('miniPreview');
+    const resultImageMini = document.getElementById('resultImageMini');
 
-    // Chart Instance
+    // Chart Instances
     let semanticChart = null;
+    let compositionPieChart = null;
+    let biomassHistogram = null;
 
-    // Drag & Drop Handlers
+    // Register Chart DataLabels
+    Chart.register(ChartDataLabels);
+
+    // --- Drag & Drop Handlers ---
     dropZone.addEventListener('click', () => fileInput.click());
 
     dropZone.addEventListener('dragover', (e) => {
@@ -27,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dropZone.classList.remove('dragover');
         if (e.dataTransfer.files.length) {
             fileInput.files = e.dataTransfer.files;
-            handleFileSelect(e.dataTransfer.files[0]);
+            handleFileSelect(fileInput.files[0]);
         }
     });
 
@@ -39,9 +46,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleFileSelect(file) {
         document.querySelector('.upload-text').textContent = file.name;
+        
+        // Show mini preview
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            resultImageMini.src = e.target.result;
+            miniPreview.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
     }
 
-    // Form Submission
+    // --- Form Submission ---
     uploadForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
@@ -88,31 +103,163 @@ document.addEventListener('DOMContentLoaded', () => {
         welcomeState.style.display = 'none';
         resultsDashboard.classList.add('visible');
 
-        // Update Metrics
-        const preds = data.predictions;
-        const animateValue = (id, val) => {
-            const el = document.getElementById(id);
-            el.textContent = parseFloat(val).toFixed(1);
-        };
+        // Scroll to results
+        resultsDashboard.scrollIntoView({ behavior: 'smooth' });
 
+        // Update Text Metrics with Animation
+        const preds = data.predictions;
         animateValue('valTotal', preds.Dry_Total_g);
+        animateValue('valGDM', preds.GDM_g);
         animateValue('valGreen', preds.Dry_Green_g);
         animateValue('valClover', preds.Dry_Clover_g);
         animateValue('valDead', preds.Dry_Dead_g);
 
-        // Update Image
-        const imgEl = document.getElementById('resultImage');
+        // Update Main Image
+        const imgEl = document.getElementById('resultImageMain');
         imgEl.src = 'data:image/jpeg;base64,' + data.image;
 
-        // Update Radar Chart
-        updateChart(data.semantic_scores);
+        // Render Charts
+        updatePieChart(preds);
+        updateHistogram(preds);
+        updateRadarChart(data.semantic_scores);
     }
 
-    function updateChart(scores) {
+    function animateValue(id, val) {
+        const el = document.getElementById(id);
+        const start = 0;
+        const end = parseFloat(val);
+        const duration = 1000;
+        let startTimestamp = null;
+
+        const step = (timestamp) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            const currentVal = (progress * (end - start) + start);
+            el.textContent = currentVal.toFixed(1);
+            if (progress < 1) {
+                window.requestAnimationFrame(step);
+            }
+        };
+        window.requestAnimationFrame(step);
+    }
+
+    // --- Chart Logic ---
+
+    function updatePieChart(preds) {
+        const ctx = document.getElementById('compositionPieChart').getContext('2d');
+        
+        // Calculate percentages
+        const total = preds.Dry_Total_g || 1;
+        const pGreen = ((preds.Dry_Green_g / total) * 100).toFixed(1);
+        const pClover = ((preds.Dry_Clover_g / total) * 100).toFixed(1);
+        const pDead = ((preds.Dry_Dead_g / total) * 100).toFixed(1);
+
+        const data = [preds.Dry_Green_g, preds.Dry_Clover_g, preds.Dry_Dead_g];
+        
+        if (compositionPieChart) compositionPieChart.destroy();
+
+        compositionPieChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Dry Green', 'Dry Clover', 'Dry Dead'],
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#4CAF50', '#9C27B0', '#795548'], // Match CSS vars
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { fontFamily: "'Open Sans', sans-serif" }
+                    },
+                    datalabels: {
+                        color: '#fff',
+                        font: { weight: 'bold' },
+                        formatter: (value, ctx) => {
+                            let sum = 0;
+                            let dataArr = ctx.chart.data.datasets[0].data;
+                            dataArr.map(data => { sum += data; });
+                            let percentage = (value*100 / sum).toFixed(1)+"%";
+                            return percentage;
+                        }
+                    },
+                    tooltip: {
+                         callbacks: {
+                             label: (ctx) => ` ${ctx.label}: ${ctx.raw.toFixed(1)} g`
+                         }
+                    }
+                }
+            }
+        });
+    }
+
+    function updateHistogram(preds) {
+        // We simulate a "Histogram" / Bar Chart comparing the weights
+        const ctx = document.getElementById('biomassHistogram').getContext('2d');
+        
+        const labels = ['Total', 'GDM', 'Green', 'Clover', 'Dead'];
+        const data = [
+            preds.Dry_Total_g,
+            preds.GDM_g,
+            preds.Dry_Green_g,
+            preds.Dry_Clover_g,
+            preds.Dry_Dead_g
+        ];
+
+        if (biomassHistogram) biomassHistogram.destroy();
+
+        biomassHistogram = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Biomass (g)',
+                    data: data,
+                    backgroundColor: [
+                        '#FF9800', // Total
+                        '#8BC34A', // GDM
+                        '#4CAF50', // Green
+                        '#9C27B0', // Clover
+                        '#795548'  // Dead
+                    ],
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: { display: true, text: 'Dry Matter (g)' }
+                    },
+                    x: {
+                        grid: { display: false }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'top',
+                        formatter: Math.round,
+                        font: { weight: 'bold' },
+                        color: '#5e6b75'
+                    }
+                }
+            }
+        });
+    }
+
+    function updateRadarChart(scores) {
         const ctx = document.getElementById('semanticChart').getContext('2d');
         
-        // Prepare data for Radar Chart
-        // We focus on the qualitative scores
         const labels = ['Green', 'Dead', 'Clover', 'Grass', 'Dense', 'Sparse', 'Bare'];
         const values = [
             scores.green, 
@@ -124,26 +271,20 @@ document.addEventListener('DOMContentLoaded', () => {
             scores.bare
         ];
 
-        // Normalize for visual (simple min-max relative to group) if needed, 
-        // but raw scores from SigLIP might vary. Assuming they are seemingly consistent.
-        
-        if (semanticChart) {
-            semanticChart.destroy();
-        }
+        if (semanticChart) semanticChart.destroy();
 
         semanticChart = new Chart(ctx, {
             type: 'radar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Semantic Match Score',
+                    label: 'Confidence Score',
                     data: values,
-                    backgroundColor: 'rgba(0, 95, 75, 0.2)',
+                    backgroundColor: 'rgba(0, 95, 75, 0.1)',
                     borderColor: '#005f4b',
                     pointBackgroundColor: '#0084c2',
-                    pointBorderColor: '#fff',
-                    pointHoverBackgroundColor: '#fff',
-                    pointHoverBorderColor: '#0084c2'
+                    borderWidth: 2,
+                    pointRadius: 3
                 }]
             },
             options: {
@@ -151,26 +292,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 maintainAspectRatio: false,
                 scales: {
                     r: {
-                        angleLines: {
-                            color: 'rgba(0,0,0,0.1)'
-                        },
-                        grid: {
-                            color: 'rgba(0,0,0,0.05)'
-                        },
+                        ticks: { display: false },
+                        angleLines: { color: 'rgba(0,0,0,0.05)' },
+                        grid: { color: 'rgba(0,0,0,0.05)' },
                         pointLabels: {
-                            font: {
-                                size: 12,
-                                family: "'Inter', sans-serif"
-                            },
+                            font: { size: 11, family: "'Inter', sans-serif" },
                             color: '#5e6b75'
                         },
                         suggestedMin: 0
                     }
                 },
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false },
+                    datalabels: { display: false } // Disable data labels for radar to avoid clutter
                 }
             }
         });

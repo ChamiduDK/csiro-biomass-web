@@ -358,6 +358,45 @@ def post_process_predictions(predictions):
     return predictions
 
 
+def generate_visual_analysis(image_path, semantic_scores, predictions):
+    """Generate visual inspections and insights"""
+    try:
+        # Read image
+        img = cv2.imread(str(image_path))
+        if img is None:
+            return None
+            
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
+        # 1. Green Channel Extraction
+        # Create a heatmap of the green channel only
+        green_channel = img_rgb[:, :, 1]
+        green_heatmap = cv2.applyColorMap(green_channel, cv2.COLORMAP_VIRIDIS)
+        _, buffer_green = cv2.imencode('.jpg', green_heatmap)
+        green_b64 = base64.b64encode(buffer_green).decode()
+        
+        # 2. Vegetation Index (ExG = 2G - R - B)
+        # Convert to float for calculation
+        r, g, b = cv2.split(img_rgb.astype("float"))
+        exg = 2 * g - r - b
+        
+        # Normalize ExG for visualization (typically -100 to 100 range normalization to 0-255)
+        exg_norm = cv2.normalize(exg, None, 0, 255, cv2.NORM_MINMAX)
+        exg_img = exg_norm.astype("uint8")
+        exg_heatmap = cv2.applyColorMap(exg_img, cv2.COLORMAP_JET)
+        _, buffer_exg = cv2.imencode('.jpg', exg_heatmap)
+        exg_b64 = base64.b64encode(buffer_exg).decode()
+        
+        return {
+            'green_channel': green_b64,
+            'exg_index': exg_b64
+        }
+        
+    except Exception as e:
+        print(f"Visual analysis error: {e}")
+        return None
+
+
 def image_to_base64(image_path):
     """Convert image to base64 for display"""
     with open(image_path, 'rb') as f:
@@ -399,6 +438,9 @@ def predict():
         # Make prediction
         result = make_prediction(filepath, model_types=selected_models)
         
+        # Generate Visual Analysis (Green Channel, ExG, Insights)
+        visual_analysis = generate_visual_analysis(filepath, result['semantic_scores'], result['predictions'])
+
         # Convert image to base64
         img_base64 = image_to_base64(filepath)
         
@@ -410,6 +452,7 @@ def predict():
             'ensemble_stats': result['ensemble_stats'],
             'model_details': result['model_details'],
             'image': img_base64,
+            'visual_analysis': visual_analysis,
             'timestamp': timestamp,
             'models_used': selected_models
         }

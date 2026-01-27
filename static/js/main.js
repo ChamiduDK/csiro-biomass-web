@@ -118,10 +118,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const imgEl = document.getElementById('resultImageMain');
         imgEl.src = 'data:image/jpeg;base64,' + data.image;
 
-        // Render Charts
+        // Update Visualization
         updatePieChart(preds);
         updateHistogram(preds);
-        updateRadarChart(data.semantic_scores);
+        
+        // Update Visual Analysis
+        if (data.visual_analysis) {
+            updateVisualAnalysis(data.visual_analysis);
+        }
+    }
+
+    function updateVisualAnalysis(analysis) {
+        // Update Images
+        const greenImg = document.getElementById('imgGreenChannel');
+        const exgImg = document.getElementById('imgExG');
+        
+        greenImg.src = 'data:image/jpeg;base64,' + analysis.green_channel;
+        exgImg.src = 'data:image/jpeg;base64,' + analysis.exg_index;
     }
 
     function animateValue(id, val) {
@@ -252,59 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         font: { weight: 'bold' },
                         color: '#5e6b75'
                     }
-                }
-            }
-        });
-    }
-
-    function updateRadarChart(scores) {
-        const ctx = document.getElementById('semanticChart').getContext('2d');
-        
-        const labels = ['Green', 'Dead', 'Clover', 'Grass', 'Dense', 'Sparse', 'Bare'];
-        const values = [
-            scores.green, 
-            scores.dead, 
-            scores.clover, 
-            scores.grass, 
-            scores.dense,
-            scores.sparse,
-            scores.bare
-        ];
-
-        if (semanticChart) semanticChart.destroy();
-
-        semanticChart = new Chart(ctx, {
-            type: 'radar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Confidence Score',
-                    data: values,
-                    backgroundColor: 'rgba(0, 95, 75, 0.1)',
-                    borderColor: '#005f4b',
-                    pointBackgroundColor: '#0084c2',
-                    borderWidth: 2,
-                    pointRadius: 3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    r: {
-                        ticks: { display: false },
-                        angleLines: { color: 'rgba(0,0,0,0.05)' },
-                        grid: { color: 'rgba(0,0,0,0.05)' },
-                        pointLabels: {
-                            font: { size: 11, family: "'Inter', sans-serif" },
-                            color: '#5e6b75'
-                        },
-                        suggestedMin: 0
-                    }
-                },
-                plugins: {
-                    legend: { display: false },
-                    datalabels: { display: false } // Disable data labels for radar to avoid clutter
                 }
             }
         });

@@ -200,16 +200,26 @@
                             </div>
                        </div>
                        
-                         <!-- Radar Chart (Keeping for advanced detail) -->
+                        <!-- Detailed Image Analysis (Replaces Radar) -->
                          <div class="chart-card">
                             <div class="chart-header">
-                               <span>Semantic Features</span>
-                               <i class="fa-solid fa-bullseye"></i>
+                               <span>Detailed Image Analysis</span>
+                               <i class="fa-solid fa-layer-group"></i>
                             </div>
-                            <div class="chart-container">
-                                <canvas id="semanticChart"></canvas>
+                            <div class="analysis-container" id="analysisContainer">
+                                <div class="visual-inspection">
+                                    <div class="inspection-item">
+                                        <label>Green Channel</label>
+                                        <img id="imgGreenChannel" src="" alt="Green Channel">
+                                    </div>
+                                    <div class="inspection-item">
+                                        <label>Veg Index (ExG)</label>
+                                        <img id="imgExG" src="" alt="Vegetation Index">
+                                    </div>
+                                </div>
                             </div>
                        </div>
+
 
                     </div>
 

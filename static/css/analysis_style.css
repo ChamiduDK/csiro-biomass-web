@@ -8,8 +8,8 @@
 
 .visual-inspection {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
   margin-top: auto;
 }
 
@@ -30,10 +30,4 @@
   object-fit: cover;
   border-radius: 4px;
   border: 1px solid var(--border-color);
-}
-
-@media (max-width: 768px) {
-  .visual-inspection {
-    grid-template-columns: 1fr;
-  }
 }

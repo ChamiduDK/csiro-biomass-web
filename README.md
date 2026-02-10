@@ -1,4 +1,4 @@
-# 🌿 CSIRO Biomass Prediction Web Application
+# CSIRO Biomass Prediction Web Application
 
 AI-powered web application for predicting pasture biomass from images using ensemble machine learning models and SigLIP embeddings.
 
@@ -6,86 +6,77 @@ AI-powered web application for predicting pasture biomass from images using ense
 ![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
 ![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
----
+## Features
 
-## 📋 Features
+- High-resolution prediction using SigLIP vision features.
+- Single image prediction for rapid sample analysis.
+- Batch processing support with CSV export.
+- Ensemble learning with LightGBM, CatBoost, and Random Forest.
+- Responsive web UI with interactive charts.
 
-- **High-Resolution Prediction** - Uses SigLIP (SO400M) for state-of-the-art vision features.
-- **Single Image Prediction** - Upload and analyze individual pasture images.
-- **Batch Processing** - Process multiple images simultaneously and export results.
-- **Model Ensemble** - Combines LightGBM, CatBoost, and Random Forest for robust predictions.
-- **Modern UI** - Interactive, responsive interface with real-time visualization.
-- **CSV Export** - Download structured results for further scientific analysis.
-
----
-
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-- Python 3.10 (Recommended for best compatibility)
-- 8GB+ RAM
-- NVIDIA GPU with CUDA (Optional, for faster processing)
 
-### Installation
+- Python 3.10 (recommended)
+- 8 GB RAM or higher
+- NVIDIA GPU with CUDA (optional)
 
-1. **Clone and Enter**
-   ```bash
-   cd csiro-biomass-web
-   ```
+### Installation and Run
 
-2. **Run the Automatic Starter**
-   Double-click `START_APP.bat` on Windows. This script will:
-   - Activate the virtual environment.
-   - Install all required dependencies.
-   - Verify models and start the server.
+1. Move to the project directory:
 
-3. **Open Browser**
-   Navigate to: `http://localhost:5000`
-
----
-
-## 📁 Project Structure
-
+```bash
+cd csiro-biomass-web
 ```
+
+2. Run the Windows starter script:
+
+```bash
+START_APP.bat
+```
+
+The script activates the virtual environment, installs dependencies, verifies model assets, and starts the Flask server.
+
+3. Open the application:
+
+`http://localhost:5000`
+
+## Project Structure
+
+```text
 csiro-biomass-web/
-├── app.py                # Main Flask application logic
-├── train_pipeline.py     # End-to-end model training script
-├── feature_engine.py      # Custom feature engineering (PCA/PLS/GMM)
-├── requirements.txt      # Python dependencies
-├── START_APP.bat         # One-click Windows starter
-│
-├── models/               # Trained models and metadata
-│   ├── ensemble_models.pkl
-│   ├── feature_engine.pkl
-│   ├── model_metadata.pkl
-│   └── siglip-so400m-patch14-384/  # High-res vision model
-│
-├── templates/            # Web interface (HTML)
-├── static/               # Assets (CSS/JS) and generated results
-└── uploads/              # Temporal storage for uploaded images
+|-- app.py                # Main Flask application
+|-- train_pipeline.py     # Model training pipeline
+|-- feature_engine.py     # Feature engineering utilities
+|-- requirements.txt      # Python dependencies
+|-- START_APP.bat         # Windows startup script
+|-- templates/            # HTML templates
+|-- static/               # CSS, JS, and generated assets
+|-- uploads/              # Uploaded image storage
+`-- models/               # Trained model files and metadata
 ```
 
----
+## Scientific Methodology
 
-## 🛠️ Configuration
+1. Feature extraction with SigLIP embeddings.
+2. Feature engineering using PCA, PLS, and GMM transformations.
+3. Ensemble inference from LightGBM, CatBoost, and Random Forest.
+4. Post-processing constraints for biologically realistic biomass outputs.
 
-The application automatically adapts to the available hardware and models. It checks `models/model_metadata.pkl` to determine the correct feature dimensions and vision model to load (SigLIP Base vs. SO400M).
+## Author and Contact
 
----
+Developed and maintained by Chamidu Dhilshan Kodithuwakkuarachchi.
 
-## 🧪 Scientific Methodology
+- Email: KD-BSCSD-20-53@student.icbtcampus.edu.lk
+- Kaggle: https://www.kaggle.com/chamidudhilshan
+- LinkedIn: https://www.linkedin.com/in/chamidudhilshan
+- GitHub: https://github.com/ChamiduDK
 
-The system follows a three-stage prediction pipeline:
-1. **Vision Engine**: Extract embeddings using SigLIP with patch-based averaging.
-2. **Concept Engine**: Generate semantic scores for pasture qualities (greenness, clover, etc.).
-3. **Ensemble Engine**: Feed embeddings and semantic features through an ensemble of Gradient Boosting and Forest models.
+## Copyright and License
 
----
+Copyright (c) 2026 Chamidu Dhilshan Kodithuwakkuarachchi.
+All rights reserved.
 
-## 📝 License
+Source code is distributed under the MIT License. See `LICENSE` for details.
 
-This project is licensed under the MIT License.
-
----
-
-**Made with ❤️ for sustainable agriculture**
